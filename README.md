@@ -22,6 +22,7 @@ Developer pushes code to GitHub → Jenkins picks it up → Code quality checked
 
 ## 📁 Project Structure
 
+```
 ecommerce-devops-project/
 ├── app/                  # Application source code + Dockerfile
 ├── jenkins/              # Jenkinsfile (CI/CD pipeline)
@@ -29,6 +30,7 @@ ecommerce-devops-project/
 ├── terraform/            # AWS Infrastructure as Code
 ├── monitoring/           # Prometheus & Grafana configuration
 └── README.md
+```
 
 ## 🚀 Project Status
 
