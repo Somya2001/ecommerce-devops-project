@@ -3,4 +3,12 @@
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
-*.exe
+
+# Node
+node_modules/
+coverage/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
