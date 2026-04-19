@@ -71,8 +71,10 @@ app.get('/metrics', async (req, res) => {
   res.end(await client.register.metrics());
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 ShopEase server running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+      console.log(`🚀 ShopEase server running on port ${PORT}`);
+    });
+  }
 
 module.exports = app;
