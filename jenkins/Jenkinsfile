@@ -1,0 +1,102 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION      = 'ap-south-1'
+        ECR_REGISTRY    = '065882629333.dkr.ecr.ap-south-1.amazonaws.com'
+        ECR_REPO        = 'ecommerce-app'
+        IMAGE_TAG       = "${BUILD_NUMBER}"
+        FULL_IMAGE      = "${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}"
+        SONAR_TOKEN     = credentials('sonarqube-token')
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo '🔄 Checking out code...'
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                echo '📦 Installing dependencies...'
+                dir('app') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                echo '🧪 Running unit tests...'
+                dir('app') {
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo '🔍 Running SonarQube analysis...'
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        cd app
+                        sonar-scanner \
+                          -Dsonar.projectKey=ecommerce-app \
+                          -Dsonar.sources=src \
+                          -Dsonar.host.url=http://sonarqube:9000 \
+                          -Dsonar.token=${SONAR_TOKEN}
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo '🐳 Building Docker image...'
+                dir('app') {
+                    sh "docker build -t ${FULL_IMAGE} ."
+                }
+            }
+        }
+
+        stage('Trivy Security Scan') {
+            steps {
+                echo '🔒 Running Trivy security scan...'
+                sh """
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:latest image \
+                        --exit-code 0 \
+                        --severity HIGH,CRITICAL \
+                        --format table \
+                        ${FULL_IMAGE}
+                """
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                echo '📤 Pushing image to ECR...'
+                withCredentials([aws(credentialsId: 'aws-credentials', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        docker push ${FULL_IMAGE}
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+        }
+    }
+}
